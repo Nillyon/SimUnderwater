@@ -4,10 +4,14 @@
 
 class WaterModel {
 public :
-    WaterModel();
+    WaterModel(double _cr, double _cg, double _cb, double _Mr, double _Mg, double _Mb);
     ~WaterModel();
-    void setAttenuationCoefficient(double _cr, double _cg, double _cb);
-    void setReflectance(double _Mr, double _Mg, double _Mb);
+    double getcr();
+    double getcg();
+    double getcb();
+    double getMr();
+    double getMg();
+    double getMb();
 
 protected :
     double m_cr;    //red stripe

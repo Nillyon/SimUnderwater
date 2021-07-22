@@ -1,4 +1,5 @@
-#include "rgb.h"
+#include "simulation.h"
+#include "equations.h"
 
 #include <osg/RenderInfo>
 #include <osg/Texture2D>
@@ -29,18 +30,18 @@
 
 #include <iostream>
 
-RGB::RGB(const std::string &_filename, double _refLatitude, double _refLongitude, osg::BoundingBox _box, double _pixel_size) :
+Simulation::Simulation(const std::string &_filename, double _refLatitude, double _refLongitude, osg::BoundingBox _box,
+                       double _pixel_size) :
         m_filename( _filename ),
         m_refLatitude(_refLatitude),
         m_refLongitude(_refLongitude),
         m_box( _box ),
         m_pixel_size( _pixel_size ),
         m_status(true)
+        {
+        }
 
-{
-}
-
-void RGB::operator ()(osg::RenderInfo &renderInfo) const
+void Simulation::operator ()(osg::RenderInfo &renderInfo, Equations _equations) const
 {   osg::Camera* camera = renderInfo.getCurrentCamera();
 
     osg::GraphicsContext* gc = camera->getGraphicsContext();
@@ -86,14 +87,75 @@ void RGB::operator ()(osg::RenderInfo &renderInfo) const
         unsigned char *buffer_B = new unsigned char[width];
         unsigned char *buffer_A = new unsigned char[width];
 
+        double min_buffer_R;
+        double min_buffer_G;
+        double min_buffer_B;
+
+        double max_buffer_R;
+        double max_buffer_G;
+        double max_buffer_B;
+
+        Matrix<double,Dynamic,Dynamic> directLightR = _equations.getDirectLightR();
+        Matrix<double,Dynamic,Dynamic> directLightG = _equations.getDirectLightG();
+        Matrix<double,Dynamic,Dynamic> directLightB = _equations.getDirectLightB();
+
+        double min_directLightR = directLightR.minCoeff();
+        double max_directLightR = directLightR.maxCoeff();
+
+        double min_directLightG = directLightG.minCoeff();
+        double max_directLightG = directLightG.maxCoeff();
+
+        double min_directLightB = directLightB.minCoeff();
+        double max_directLightB = directLightB.maxCoeff();
 
         for(int i=0; i<height; i++)
         {
+            min_buffer_R=image->data(size - width*i - 1)[0];
+            min_buffer_G=image->data(size - width*i - 1)[1];
+            min_buffer_B=image->data(size - width*i - 1)[2];
+
+            max_buffer_R=image->data(size - width*i - 1)[0];
+            max_buffer_G=image->data(size - width*i - 1)[1];
+            max_buffer_B=image->data(size - width*i - 1)[2];
+
             for(int j=0; j<(width); j++)
             {
                 buffer_R[width-j-1] = image->data(size - ((width*i)+j) - 1)[0];
                 buffer_G[width-j-1] = image->data(size - ((width*i)+j) - 1)[1];
                 buffer_B[width-j-1] = image->data(size - ((width*i)+j) - 1)[2];
+                buffer_A[width-j-1] = image->data(size - ((width*i)+j) - 1)[3];
+
+                if(buffer_R[width-j-1]<min_buffer_R)
+                    min_buffer_R=buffer_R[width-j-1];
+                if(buffer_G[width-j-1]<min_buffer_G)
+                    min_buffer_G=buffer_G[width-j-1];
+                if(buffer_B[width-j-1]<min_buffer_B)
+                    min_buffer_B=buffer_B[width-j-1];
+
+                if(buffer_R[width-j-1]>max_buffer_R)
+                    max_buffer_R=buffer_R[width-j-1];
+                if(buffer_G[width-j-1]>max_buffer_G)
+                    max_buffer_G=buffer_G[width-j-1];
+                if(buffer_B[width-j-1]>max_buffer_B)
+                    max_buffer_B=buffer_B[width-j-1];
+
+
+            }
+            // CPLErr GDALRasterBand::RasterIO( GDALRWFlag eRWFlag, int nXOff, int nYOff, int nXSize, int nYSize, void * pData, int nBufXSize, int nBufYSize, GDALDataType eBufType, int nPixelSpace, int nLineSpace )
+            CPLErr res;
+            res = geotiff_dataset->GetRasterBand(1)->RasterIO(GF_Write,0,i,width,1,buffer_R,width,1,GDT_Byte,0,0);
+            res = geotiff_dataset->GetRasterBand(2)->RasterIO(GF_Write,0,i,width,1,buffer_G,width,1,GDT_Byte,0,0);
+            res = geotiff_dataset->GetRasterBand(3)->RasterIO(GF_Write,0,i,width,1,buffer_B,width,1,GDT_Byte,0,0);
+            res = geotiff_dataset->GetRasterBand(4)->RasterIO(GF_Write,0,i,width,1,buffer_A,width,1,GDT_Byte,0,0);
+        }
+
+        for(int i=0; i<height; i++)
+        {
+            for(int j=0; j<(width); j++)
+            {
+                buffer_R[width-j-1] = (uint8_t)(max_buffer_R*(image->data(size - ((width*i)+j) - 1)[0]*directLightR(i,width-j-1)-min_buffer_R*min_directLightR)/(max_buffer_R*max_directLightR-min_buffer_R*min_directLightR));
+                buffer_G[width-j-1] = (uint8_t)(max_buffer_G*(image->data(size - ((width*i)+j) - 1)[1]*directLightG(i,width-j-1)-min_buffer_G*min_directLightG)/(max_buffer_G*max_directLightG-min_buffer_G*min_directLightG));
+                buffer_B[width-j-1] = (uint8_t)(max_buffer_B*(image->data(size - ((width*i)+j) - 1)[2]*directLightB(i,width-j-1)-min_buffer_B*min_directLightB)/(max_buffer_B*max_directLightB-min_buffer_B*min_directLightB));
                 buffer_A[width-j-1] = image->data(size - ((width*i)+j) - 1)[3];
             }
             // CPLErr GDALRasterBand::RasterIO( GDALRWFlag eRWFlag, int nXOff, int nYOff, int nXSize, int nYSize, void * pData, int nBufXSize, int nBufYSize, GDALDataType eBufType, int nPixelSpace, int nLineSpace )
@@ -127,16 +189,16 @@ void RGB::operator ()(osg::RenderInfo &renderInfo) const
         delete [] buffer_B;
         delete [] buffer_A;
 
-        const_cast<RGB*>(this)->m_status = true;
+        const_cast<Simulation*>(this)->m_status = true;
     }
     else
     {
-        const_cast<RGB*>(this)->m_status = false;
+        const_cast<Simulation*>(this)->m_status = false;
     }
 
 }
 
-bool RGB::process(osg::ref_ptr<osg::Node> _node, const std::string &_filename, double _refLatitude, double _refLongitude, double _pixel_size, osg::Matrixd _intrinsic, osg::Matrixd _extrinsic , bool _disableTexture)
+bool Simulation::simulate(osg::ref_ptr<osg::Node> _node, const std::string &_filename, double _refLatitude, double _refLongitude, double _pixel_size, osg::Matrixd _intrinsic, osg::Matrixd _extrinsic, Equations _equations , bool _disableTexture)
 {
 
     BoxVisitor boxVisitor;
@@ -323,14 +385,14 @@ bool RGB::process(osg::ref_ptr<osg::Node> _node, const std::string &_filename, d
 
     viewer.home();
 
-    RGB* final_draw_callback = new RGB(_filename,_refLatitude, _refLongitude, image_bounds, _pixel_size);
-    mrt_camera->setFinalDrawCallback(final_draw_callback);
+    Simulation* final_draw_callback = new Simulation(_filename,_refLatitude, _refLongitude, image_bounds, _pixel_size);
+    mrt_camera->setFinalDrawCallback(reinterpret_cast<osg::Camera::DrawCallback *>(final_draw_callback));
 
     viewer.frame();
 
     bool status = final_draw_callback->status();
 
-    mrt_camera->removeFinalDrawCallback(final_draw_callback);
+    mrt_camera->removeFinalDrawCallback(reinterpret_cast<osg::Camera::DrawCallback *>(final_draw_callback));
 
     // causes SEGV
     //delete final_draw_callback;
@@ -381,9 +443,9 @@ bool RGB::process(osg::ref_ptr<osg::Node> _node, const std::string &_filename, d
     return status;
 }
 
-RGB::~RGB()
-{
+Simulation::~Simulation() {
 }
+
 
 
 

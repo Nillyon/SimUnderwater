@@ -13,36 +13,35 @@
 
 class CameraModel {
 public:
-    CameraModel();
+    CameraModel(double _tx, double _ty, double _tz, double _r00, double _r01, double _r02, double _r10, double _r11,
+                double _r12, double _r20, double _r21, double _r22, double _focal, double _alpha, double _beta,
+                double _u0, double _v0, double _Tl, double _fn);
     ~CameraModel();
 
     double getTx();
     double getTy();
     double getTz();
-    double getRx();
-    double getRy();
-    double getRz();
     double getFocal();
     double getLensTransmittance();
     double getFnumber();
-    double getXimage(double _X, double _Z);
-    double getYimage(double _Y, double _Z);
-
-    void setTranslation(double _tx, double _ty, double _tz);
-    void setRotation(double _rx, double _ry, double _rz);
-    void setFocals(double _focal, double _alpha, double _beta);
-    void setOffsets(double _u0, double _v0);
-    void setLensTransmittance(double _Tl);
-    void setFnumber(double _fn);
-
+    double getFocalX();
+    double getFocalY();
+    double getU0();
+    double getV0();
 
 protected:
     double m_tx;
     double m_ty;
     double m_tz;
-    double m_rx;
-    double m_ry;
-    double m_rz;
+    double m_r00;
+    double m_r01;
+    double m_r02;
+    double m_r10;
+    double m_r11;
+    double m_r12;
+    double m_r20;
+    double m_r21;
+    double m_r22;
 
     double m_focal;
     double m_focalx;

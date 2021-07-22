@@ -107,7 +107,7 @@ class Depth {
     };
     public:
         Depth(osgViewer::Viewer* pView);
-        static bool Capture(osg::ref_ptr<osg::Node> _node, const double _pixel_size, double _refLatitude, double _refLongitude, std::string _fileName, osg::Vec3d _eye, osg::Vec3d _target, osg::Vec3d _up);
+        static bool Capture (osg::ref_ptr<osg::Node> _node, const double _pixel_size, double _refLatitude, double _refLongitude, const std::string& _fileName, const osg::Matrixd& _intrinsic, const osg::Matrixd& _extrinsic);
 
         ~Depth();
 
