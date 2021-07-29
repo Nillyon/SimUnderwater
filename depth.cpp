@@ -31,7 +31,7 @@ Depth::Depth(osgViewer::Viewer* pView)
 }
 
 
-bool Depth::Capture(osg::ref_ptr<osg::Node> _node, const double _pixel_size, double _refLatitude, double _refLongitude, const std::string& _fileName,  const osg::Matrixd& _intrinsic, const osg::Matrixd& _extrinsic)
+bool Depth::Capture(osg::ref_ptr<osg::Node> _node, const double _pixel_size, double _refLatitude, double _refLongitude, const std::string& _fileName, osg::Vec3d _eye, osg::Vec3d _target, osg::Vec3d _up )
 {
     BoxVisitor boxVisitor;
     _node->accept(boxVisitor);
@@ -45,12 +45,14 @@ bool Depth::Capture(osg::ref_ptr<osg::Node> _node, const double _pixel_size, dou
     double y_min = box.yMin();
     double width_pixel = ceil((x_max-x_min)/_pixel_size);
     double height_pixel = ceil((y_max-y_min)/_pixel_size);
+    double width_meter = _pixel_size*width_pixel;
+    double height_meter = _pixel_size*height_pixel;
 
     osg::ref_ptr<osg::GraphicsContext::Traits> traits = new osg::GraphicsContext::Traits;
     traits->x = 0;
     traits->y = 0;
-    traits->width = (int)width_pixel;
-    traits->height = (int)height_pixel;
+    traits->width = width_pixel;
+    traits->height = height_pixel;
     traits->pbuffer = true;
     traits->alpha =  8;
     traits->depth = 24; //32; does not work in Windows
@@ -64,7 +66,7 @@ bool Depth::Capture(osg::ref_ptr<osg::Node> _node, const double _pixel_size, dou
     osg::ref_ptr<osg::GraphicsContext> gc = osg::GraphicsContext::createGraphicsContext(traits.get());
 
     osg::ref_ptr< osg::Group > root( new osg::Group );
-    root->addChild( _node.get() );
+    root->addChild( _node );
 
     // Create the viewer
     osgViewer::Viewer viewer;
@@ -82,10 +84,13 @@ bool Depth::Capture(osg::ref_ptr<osg::Node> _node, const double _pixel_size, dou
     zImage->allocateImage((int)width_pixel, (int)height_pixel, 1, GL_DEPTH_COMPONENT , GL_FLOAT);
     camera->attach(osg::Camera::DEPTH_BUFFER, zImage.get()); /* */
 
+    // put our model in the center of our viewer
     viewer.setCameraManipulator(new osgGA::TrackballManipulator());
 
-    viewer.getCamera()->setViewMatrix(_extrinsic);
-    viewer.getCamera()->setProjectionMatrix(_intrinsic);
+
+    viewer.getCamera()->setProjectionMatrixAsOrtho2D(-width_meter/2,width_meter/2,-height_meter/2,height_meter/2);
+    viewer.getCameraManipulator()->setHomePosition(_eye,_target,_up);
+
     viewer.setSceneData( root.get() );
     viewer.realize();
 
@@ -108,12 +113,11 @@ bool Depth::Capture(osg::ref_ptr<osg::Node> _node, const double _pixel_size, dou
         float delta = zmax - zmin;
 
         // GDAL
-        {   GDALDriver *driver_geotiff_alt;
-            GDALDataset *geotiff_dataset_alt;
-            int width = (int)width_pixel;
-            int height = (int)height_pixel;
-            driver_geotiff_alt = GetGDALDriverManager()->GetDriverByName("GTiff");
-            geotiff_dataset_alt = driver_geotiff_alt->Create((_fileName + ".tif").c_str(),width,height,1,GDT_Float32,NULL);
+        {
+            int width = width_pixel;
+            int height = height_pixel;
+            GDALDriver *driver_geotiff_alt = GetGDALDriverManager()->GetDriverByName("GTiff");
+            GDALDataset *geotiff_dataset_alt = driver_geotiff_alt->Create((_fileName + ".tif").c_str(),width,height,1,GDT_Float32,NULL);
 
             zImage->readPixels(0,0,width,height, GL_DEPTH_COMPONENT, GL_FLOAT);
             float *buffer= new float[width];
@@ -121,7 +125,6 @@ bool Depth::Capture(osg::ref_ptr<osg::Node> _node, const double _pixel_size, dou
 
             for(int i=0; i<height; i++)
             {
-
                 float*data = (float*)zImage->data();
 
                 for(int j=0; j<width; j++)

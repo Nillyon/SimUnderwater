@@ -31,8 +31,8 @@ Matrix<double,Dynamic,Dynamic> Equations::getDirectLightB() {
 }
 
 void Equations::computeDirectLight(osg::ref_ptr<osg::Node> _node, const double _pixel_size,
-                                   osg::Matrixd _intrinsicCamera, osg::Matrixd _extrinsicCamera, osg::Matrixd _inverse,
-                                   osg::Matrixd _intrinsicLight, osg::Matrixd _extrinsicLight,
+                                   osg::Vec3d _eyecam, osg::Vec3d _targetcam, osg::Vec3d _upcam, osg::Matrixd _inverse,
+                                   osg::Vec3d _eyelight, osg::Vec3d _targetlight, osg::Vec3d _uplight,
                                    LightModel _lightModel, WaterModel _waterModel, CameraModel _cameraModel) {
     BoxVisitor boxVisitor;
     _node->accept(boxVisitor);
@@ -49,10 +49,10 @@ void Equations::computeDirectLight(osg::ref_ptr<osg::Node> _node, const double _
     int width = (int)width_pixel;
     int height = (int)height_pixel;
 
-    compute3DCoordinates(_node, _pixel_size, _intrinsicCamera, _extrinsicCamera, _inverse, _cameraModel);
+    compute3DCoordinates(_node, _pixel_size, _eyecam, _targetcam, _upcam, _inverse, _cameraModel);
     computeNormals(_node,_pixel_size);
-    computeCamera(_node,_pixel_size,_intrinsicCamera,_extrinsicCamera, _cameraModel);
-    computeLight(_node,_pixel_size,_intrinsicLight,_extrinsicLight,_lightModel);
+    computeCamera(_node,_pixel_size,_eyecam, _targetcam, _upcam, _cameraModel);
+    computeLight(_node,_pixel_size,_eyelight, _targetlight, _uplight,_lightModel);
     double Elr;
     double Elg;
     double Elb;
@@ -86,8 +86,7 @@ void Equations::computeDirectLight(osg::ref_ptr<osg::Node> _node, const double _
 }
 
 
-void Equations::computeCamera(osg::ref_ptr<osg::Node> _node, const double _pixel_size, osg::Matrixd _intrinsicCamera,
-                              osg::Matrixd _extrinsicCamera, CameraModel _cameraModel) {
+void Equations::computeCamera(osg::ref_ptr<osg::Node> _node, const double _pixel_size, osg::Vec3d _eye, osg::Vec3d _target, osg::Vec3d _up, CameraModel _cameraModel) {
 
     BoxVisitor boxVisitor;
     _node->accept(boxVisitor);
@@ -101,6 +100,8 @@ void Equations::computeCamera(osg::ref_ptr<osg::Node> _node, const double _pixel
     double y_min = box.yMin();
     double width_pixel = ceil((x_max-x_min)/_pixel_size);
     double height_pixel = ceil((y_max-y_min)/_pixel_size);
+    double width_meter = _pixel_size*width_pixel;
+    double height_meter = _pixel_size*height_pixel;
 
     osg::ref_ptr<osg::GraphicsContext::Traits> traits = new osg::GraphicsContext::Traits;
     traits->x = 0;
@@ -141,8 +142,10 @@ void Equations::computeCamera(osg::ref_ptr<osg::Node> _node, const double _pixel
     // put our model in the center of our viewer
     viewer.setCameraManipulator(new osgGA::TrackballManipulator());
 
-    viewer.getCamera()->setViewMatrix(_extrinsicCamera);
-    viewer.getCamera()->setProjectionMatrix(_intrinsicCamera);
+//  viewer.getCamera()->setViewMatrix(_extrinsicCamera);
+//  viewer.getCamera()->setProjectionMatrix(_intrinsicCamera);
+    viewer.getCamera()->setProjectionMatrixAsOrtho2D(-width_meter/2,width_meter/2,-height_meter/2,height_meter/2);
+    viewer.getCameraManipulator()->setHomePosition(_eye, _target, _up);
 
     viewer.setSceneData( root.get() );
     viewer.realize();
@@ -194,8 +197,7 @@ void Equations::computeCamera(osg::ref_ptr<osg::Node> _node, const double _pixel
 
 }
 
-void Equations::computeLight(osg::ref_ptr<osg::Node> _node, const double _pixel_size, osg::Matrixd _intrinsicLight,
-                             osg::Matrixd _extrinsicLight, LightModel _lightModel) {
+void Equations::computeLight(osg::ref_ptr<osg::Node> _node, const double _pixel_size, osg::Vec3d _eye, osg::Vec3d _target, osg::Vec3d _up, LightModel _lightModel) {
     BoxVisitor boxVisitor;
     _node->accept(boxVisitor);
 
@@ -208,6 +210,8 @@ void Equations::computeLight(osg::ref_ptr<osg::Node> _node, const double _pixel_
     double y_min = box.yMin();
     double width_pixel = ceil((x_max-x_min)/_pixel_size);
     double height_pixel = ceil((y_max-y_min)/_pixel_size);
+    double width_meter = _pixel_size*width_pixel;
+    double height_meter = _pixel_size*height_pixel;
 
     osg::ref_ptr<osg::GraphicsContext::Traits> traits = new osg::GraphicsContext::Traits;
     traits->x = 0;
@@ -248,8 +252,10 @@ void Equations::computeLight(osg::ref_ptr<osg::Node> _node, const double _pixel_
     // put our model in the center of our viewer
     viewer.setCameraManipulator(new osgGA::TrackballManipulator());
 
-    viewer.getCamera()->setViewMatrix(_extrinsicLight);
-    viewer.getCamera()->setProjectionMatrix(_intrinsicLight);
+//  viewer.getCamera()->setViewMatrix(_extrinsicLight);
+//  viewer.getCamera()->setProjectionMatrix(_intrinsicLight);
+    viewer.getCamera()->setProjectionMatrixAsOrtho2D(-width_meter/2,width_meter/2,-height_meter/2,height_meter/2);
+    viewer.getCameraManipulator()->setHomePosition(_eye, _target, _up);
 
     viewer.setSceneData( root.get() );
     viewer.realize();
@@ -309,7 +315,7 @@ void Equations::computeLight(osg::ref_ptr<osg::Node> _node, const double _pixel_
 
 }
 void Equations::compute3DCoordinates(osg::ref_ptr<osg::Node> _node, const double _pixel_size,
-                                     osg::Matrixd _intrinsicCamera, osg::Matrixd _extrinsicCamera, osg::Matrixd _inverse,
+                                     osg::Vec3d _eye, osg::Vec3d _target, osg::Vec3d _up, osg::Matrixd _inverse,
                                      CameraModel _cameraModel) {
     BoxVisitor boxVisitor;
     _node->accept(boxVisitor);
@@ -323,6 +329,8 @@ void Equations::compute3DCoordinates(osg::ref_ptr<osg::Node> _node, const double
     double y_min = box.yMin();
     double width_pixel = ceil((x_max-x_min)/_pixel_size);
     double height_pixel = ceil((y_max-y_min)/_pixel_size);
+    double width_meter = _pixel_size*width_pixel;
+    double height_meter = _pixel_size*height_pixel;
 
     osg::ref_ptr<osg::GraphicsContext::Traits> traits = new osg::GraphicsContext::Traits;
     traits->x = 0;
@@ -363,8 +371,10 @@ void Equations::compute3DCoordinates(osg::ref_ptr<osg::Node> _node, const double
     // put our model in the center of our viewer
     viewer.setCameraManipulator(new osgGA::TrackballManipulator());
 
-    viewer.getCamera()->setViewMatrix(_extrinsicCamera);
-    viewer.getCamera()->setProjectionMatrix(_intrinsicCamera);
+//  viewer.getCamera()->setViewMatrix(_extrinsicCamera);
+//  viewer.getCamera()->setProjectionMatrix(_intrinsicCamera);
+    viewer.getCamera()->setProjectionMatrixAsOrtho2D(-width_meter/2,width_meter/2,-height_meter/2,height_meter/2);
+    viewer.getCameraManipulator()->setHomePosition(_eye, _target, _up);
 
     viewer.setSceneData( root.get() );
     viewer.realize();

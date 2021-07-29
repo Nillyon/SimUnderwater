@@ -28,19 +28,19 @@ public:
     double minDirectLight(Matrix<double,Dynamic,Dynamic>);
 
     void computeDirectLight(osg::ref_ptr<osg::Node> _node, const double _pixel_size,
-                            osg::Matrixd _intrinsicCamera, osg::Matrixd _extrinsicCamera, osg::Matrixd _inverse,
-                            osg::Matrixd _intrinsicLight, osg::Matrixd _extrinsicLight, LightModel _lightModel,
+                            osg::Vec3d _eyecam, osg::Vec3d _targetcam, osg::Vec3d _upcam, osg::Matrixd _inverse,
+                            osg::Vec3d _eyelight, osg::Vec3d _targetlight, osg::Vec3d _uplight, LightModel _lightModel,
                             WaterModel _waterModel, CameraModel _cameraModel);
     void computeForwardScatter();
     void computeBackScatter();
     void compute3DCoordinates(osg::ref_ptr<osg::Node> _node, const double _pixel_size,
-                              osg::Matrixd _intrinsicCamera, osg::Matrixd _extrinsicCamera, osg::Matrixd _inverse,
+                              osg::Vec3d _eyecam, osg::Vec3d _targetcam, osg::Vec3d _upcam, osg::Matrixd _inverse,
                               CameraModel _cameraModel);
     void computeNormals(osg::ref_ptr<osg::Node> _node, const double _pixel_size);
     void computeCamera(osg::ref_ptr<osg::Node> _node, const double _pixel_size,
-                    osg::Matrixd _intrinsicCamera, osg::Matrixd _extrinsicCamera, CameraModel _cameraModel);  //function to measure every geometrical parameter relative to the camera
+                       osg::Vec3d _eyecam, osg::Vec3d _targetcam, osg::Vec3d _upcam, CameraModel _cameraModel);  //function to measure every geometrical parameter relative to the camera
     void computeLight(osg::ref_ptr<osg::Node> _node, const double _pixel_size,
-                      osg::Matrixd _intrinsicLight, osg::Matrixd _extrinsicLight, LightModel _lightModel);  //function to measure every geometrical parameter relative to the camera
+                      osg::Vec3d _eyelight, osg::Vec3d _targetlight, osg::Vec3d _uplight, LightModel _lightModel);  //function to measure every geometrical parameter relative to the camera
 
     Matrix<Vector3d ,Dynamic,Dynamic> get3DCoordinates();
     Matrix<Vector3d ,Dynamic,Dynamic> getNormals();

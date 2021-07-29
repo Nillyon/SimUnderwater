@@ -31,7 +31,8 @@ int main() {
     // Filename to read
     std::string filename;
 
-//    double xeye, yeye, zeye, xtarget, ytarget, ztarget, xup, yup, zup;
+    double xeyecam, yeyecam, zeyecam, xtargetcam, ytargetcam, ztargetcam, xupcam, yupcam, zupcam;
+    double xeyelight, yeyelight, zeyelight, xtargetlight, ytargetlight, ztargetlight, xuplight, yuplight, zuplight;
 
     std::cout << "Enter filename : ";
     std::cin>>filename;
@@ -52,29 +53,40 @@ int main() {
     std::cout<<"Enter your pixel size : ";
     std::cin>>pixel_size;
 
-//    xeye = txcam;
-//    yeye = tycam;
-//    zeye = tzcam;
-//
-//    xup = sin(rzcam*M_PI/180);
-//    yup = cos(rzcam*M_PI/180);
-//    zup = 0;
-//
-//    xtarget = xeye - sin(rycam*M_PI/180);
-//    ytarget = yeye + sin(rxcam*M_PI/180);
-//    ztarget = zeye - cos(rxcam*M_PI/180) - cos(rycam*M_PI/180) + 1;
+    // Node initialisation
 
+    osg::ref_ptr<osg::Node> node = osgDB::readNodeFile(filename);
+
+    BoxVisitor boxVisitor;
+    node->accept(boxVisitor);
+
+    osg::BoundingBox box = boxVisitor.getBoundingBox();
+
+    // Create the edge of our picture
+
+    double x_max = box.xMax();
+    double x_min = box.xMin();
+    double y_max = box.yMax();
+    double y_min = box.yMin();
+    double width_pixel = ceil((x_max-x_min)/pixel_size);
+    double height_pixel = ceil((y_max-y_min)/pixel_size);
+    double width_meter = pixel_size*width_pixel;
+    double height_meter = pixel_size*height_pixel;
+
+    int width = (int)width_pixel;
+    int height = (int)height_pixel;
 
     // Camera model initialisation
 
-    double txcam, tycam, tzcam, rcam00, rcam01, rcam02, rcam10, rcam11, rcam12, rcam20, rcam21, rcam22;
+    double txcam, tycam, tzcam, rcam00, rcam01, rcam02, rcam10, rcam11, rcam12, rcam20, rcam21, rcam22, rxcam, rycam, rzcam;
     double alpha, beta, u0, v0, focal, fnumber, lenstransmittance;
 
     std::cout<<"Enter the parameters for your camera : \n";
     std::cout << "Translation : \n";
     std::cin >> txcam >> tycam >> tzcam;
     std::cout << "Rotation : \n";
-    std::cin >> rcam00 >> rcam01 >> rcam02 >> rcam10 >> rcam11 >> rcam12 >> rcam20 >> rcam21 >> rcam22;
+    std::cin >> rxcam >> rycam >> rzcam;
+//    std::cin >> rcam00 >> rcam01 >> rcam02 >> rcam10 >> rcam11 >> rcam12 >> rcam20 >> rcam21 >> rcam22;
     std::cout<<"Focal : ";
     std::cin>>focal;
     std::cout<<"X and Y scales : ";
@@ -88,6 +100,20 @@ int main() {
 
     CameraModel cameraModel(txcam, tycam, tzcam, rcam00, rcam01, rcam02, rcam10, rcam11, rcam12, rcam20, rcam21,
                             rcam22, focal, alpha, beta, u0, v0, lenstransmittance, fnumber);
+
+    //  Coordinates to use if using setMatrixAsLookAt(eye,target,up)
+
+    xeyecam = txcam;
+    yeyecam = tycam;
+    zeyecam = box.zMin()+tzcam;
+
+    xupcam = sin(rzcam*M_PI/180);
+    yupcam = cos(rzcam*M_PI/180);
+    zupcam = 0;
+
+    xtargetcam = xeyecam - sin(rycam*M_PI/180);
+    ytargetcam = yeyecam + sin(rxcam*M_PI/180);
+    ztargetcam = zeyecam - cos(rxcam*M_PI/180) - cos(rycam*M_PI/180);
 
 
     // Water model initialisation
@@ -105,20 +131,35 @@ int main() {
 
     // Light model initialisation
 
-    double txlight,tylight,tzlight,rlight00,rlight01,rlight02,rlight10,rlight11,rlight12,rlight20,rlight21,rlight22;
+    double txlight,tylight,tzlight,rlight00,rlight01,rlight02,rlight10,rlight11,rlight12,rlight20,rlight21,rlight22, rxlight, rylight, rzlight;
     double Lr,Lg,Lb;
 
     std::cout<<"Enter the parameters for the light : ";
     std::cout<<"Translation : \n";
     std::cin>>txlight>>tylight>>tzlight;
     std::cout<<"Rotation : ";
-    std::cin>>rlight00>>rlight01>>rlight02>>rlight10>>rlight11>>rlight12>>rlight20>>rlight21>>rlight22;
+    std::cin>>rxlight>>rylight>>rzlight;
+//    std::cin>>rlight00>>rlight01>>rlight02>>rlight10>>rlight11>>rlight12>>rlight20>>rlight21>>rlight22;
     std::cout<<"Light Powers for RGB : ";
     std::cin>>Lr>>Lg>>Lb;
 
     LightModel lightModel(txlight, tylight, tzlight, rlight00, rlight01, rlight02, rlight10, rlight11, rlight12,
                           rlight20, rlight21, rlight22, Lr, Lg, Lb);
 
+
+    //  Coordinates to use if using setMatrixAsLookAt(eye,target,up)
+
+    xeyelight = txlight;
+    yeyelight = tylight;
+    zeyelight = box.zMin()+tzlight;
+
+    xuplight = sin(rzlight*M_PI/180);
+    yuplight = cos(rzlight*M_PI/180);
+    zuplight = 0;
+
+    xtargetlight = xeyelight - sin(rylight*M_PI/180);
+    ytargetlight = yeyelight + sin(rxlight*M_PI/180);
+    ztargetlight = zeyelight - cos(rxlight*M_PI/180) - cos(rylight*M_PI/180);
 
     // Transformation matrix for camera and its inverse
 
@@ -140,25 +181,6 @@ int main() {
                                         rlight20, rlight21, rlight22, tzlight,
                                         0, 0, 0, 1);
 
-    osg::ref_ptr<osg::Node> node = osgDB::readNodeFile(filename);
-
-    BoxVisitor boxVisitor;
-    node->accept(boxVisitor);
-
-    osg::BoundingBox box = boxVisitor.getBoundingBox();
-
-    // Create the edge of our picture
-
-    double x_max = box.xMax();
-    double x_min = box.xMin();
-    double y_max = box.yMax();
-    double y_min = box.yMin();
-    double width_pixel = ceil((x_max-x_min)/pixel_size);
-    double height_pixel = ceil((y_max-y_min)/pixel_size);
-
-    int width = (int)width_pixel;
-    int height = (int)height_pixel;
-
 
     // Projection matrix
 
@@ -178,23 +200,24 @@ int main() {
                                     0, 0, -2.0f/(far-near), -(far+near)/(far-near),
                                     0, 0, 0, 1);
 
-
-
-//    osg::Matrixd intrinsic = osg::Matrixd(2*focalx/width, 0, (width - 2*u0)/width, 0,
-//                                          0, -2*focaly/height, (height - 2*v0)/height, 0,
-//                                          0, 0, -(far + near) / (far - near), -2.0*far*near/(far - near),
-//                                          0, 0, -1, 0);
-
     osg::Matrixd intrinsic = NDC*KGL;
 
 
-//    osg::Vec3d eye(xeye,
-//                   yeye,
-//                   zeye);
-//    osg::Vec3d target( xtarget,
-//                       ytarget,
-//                       ztarget);
-//    osg::Vec3d up(xup,yup,zup);
+    osg::Vec3d eyecam(xeyecam,
+                   yeyecam,
+                   zeyecam);
+    osg::Vec3d targetcam( xtargetcam,
+                       ytargetcam,
+                       ztargetcam);
+    osg::Vec3d upcam(xupcam,yupcam,zupcam);
+
+    osg::Vec3d eyelight(xeyelight,
+                      yeyelight,
+                      zeyelight);
+    osg::Vec3d targetlight( xtargetlight,
+                          ytargetlight,
+                          ztargetlight);
+    osg::Vec3d uplight(xuplight,yuplight,zuplight);
 
 //    osg::ref_ptr<osg::Camera> camera = new osg::Camera;
 //    camera->setClearMask( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
@@ -206,18 +229,13 @@ int main() {
 //    root->addChild( node );
 //    root->addChild( camera );
 
+
+
     GDALAllRegister();
 
-    bool save_rgb_image = RGB::process(node,rgbName,0,0, pixel_size, intrinsic, TRcam);
+    // Generation of depth, rgb and simulated image
 
-    if (save_rgb_image)
-        std::cout<<"Your rgb image has succesfully been generated\n";
-    else
-    {
-        std::cout<<"Error";
-    }
-
-    bool save_depth_map = Depth::Capture(node,pixel_size, 0, 0,depthName, intrinsic, TRcam);
+    bool save_depth_map = Depth::Capture(node,pixel_size, 0, 0,depthName, eyecam, targetcam, upcam);
 
     if (save_depth_map)
         std::cout<<"Your depth map has succesfully been generated\n";
@@ -226,25 +244,37 @@ int main() {
         std::cout<<"Error";
     }
 
-    Equations equations;
-    equations.computeDirectLight(node, pixel_size, intrinsic, TRcam, inverse,
-                                 intrinsic,TRlight,lightModel,waterModel,cameraModel);
+    bool save_rgb_image = RGB::process(node,rgbName,0,0, pixel_size, eyecam, targetcam, upcam);
 
-    bool save_simulation = Simulation::simulate(node,simulatedName,0,0,pixel_size,intrinsic,TRcam,equations);
-
-    if (save_simulation)
-        std::cout<<"Your simulated image has succesfully been generated\n";
+    if (save_rgb_image)
+        std::cout<<"Your rgb image has succesfully been generated\n";
     else
     {
         std::cout<<"Error";
     }
 
+//    Equations equations;
+//    equations.computeDirectLight(node, pixel_size, eyecam, targetcam, upcam, inverse,
+//                                 eyelight, targetlight, uplight,lightModel,waterModel,cameraModel);
+//
+//    bool save_simulation = Simulation::simulate(node,simulatedName,0,0,pixel_size,eyecam, targetcam, upcam,equations);
+//
+//    if (save_simulation)
+//        std::cout<<"Your simulated image has succesfully been generated\n";
+//    else
+//    {
+//        std::cout<<"Error";
+//    }
+
     GDALDestroyDriverManager();
 
     // Viewer construction
+
     osg::ref_ptr<osgViewer::Viewer> viewer = new osgViewer::Viewer;
     viewer->setCameraManipulator(new osgGA::TrackballManipulator());
     viewer->getCamera()->setClearColor(osg::Vec4(0.0f,0.0f,0.0f,0.0f));
+    viewer->getCamera()->setProjectionMatrixAsOrtho2D(-width_meter/2,width_meter/2,-height_meter/2,height_meter/2);
+    viewer->getCameraManipulator()->setHomePosition(eyecam, targetcam, upcam);
     viewer->setSceneData(node);
 
     return viewer->run();

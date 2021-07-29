@@ -113,7 +113,6 @@ void RGB::operator ()(osg::RenderInfo &renderInfo) const
         o_SRS.SetTM(lat_0,lon_0,0.9996,0,0);
         o_SRS.SetWellKnownGeogCS( "WGS84" );
         o_SRS.exportToWkt( &geo_reference );
-
         geotiff_dataset->SetProjection(geo_reference);
 
         GDALClose(geotiff_dataset);
@@ -136,7 +135,7 @@ void RGB::operator ()(osg::RenderInfo &renderInfo) const
 
 }
 
-bool RGB::process(osg::ref_ptr<osg::Node> _node, const std::string &_filename, double _refLatitude, double _refLongitude, double _pixel_size, osg::Matrixd _intrinsic, osg::Matrixd _extrinsic , bool _disableTexture)
+bool RGB::process(osg::ref_ptr<osg::Node> _node, const std::string &_filename, double _refLatitude, double _refLongitude, double _pixel_size, osg::Vec3d _eye, osg::Vec3d _target, osg::Vec3d _up , bool _disableTexture)
 {
 
     BoxVisitor boxVisitor;
@@ -308,9 +307,10 @@ bool RGB::process(osg::ref_ptr<osg::Node> _node, const std::string &_filename, d
     viewer.setCameraManipulator(new osgGA::TrackballManipulator());
     double cam_center_z= (x_max-x_min)/2 + (y_max-y_min)/2 ;
 
-    viewer.getCamera()->setViewMatrix(_extrinsic);
-    viewer.getCamera()->setProjectionMatrix(_intrinsic);
-
+//  viewer.getCamera()->setViewMatrix(_extrinsic);
+//  viewer.getCamera()->setProjectionMatrix(_intrinsic);
+    viewer.getCamera()->setProjectionMatrixAsOrtho2D(-width_meter/2,width_meter/2,-height_meter/2,height_meter/2);
+    viewer.getCameraManipulator()->setHomePosition(_eye, _target, _up);
     viewer.setSceneData( root.get() );
     viewer.realize();
 

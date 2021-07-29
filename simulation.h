@@ -22,7 +22,7 @@ public:
     bool status() const { return m_status; }
 
     static bool simulate(osg::ref_ptr<osg::Node> _node, const std::string &_filename, double _refLatitude, double _refLongitude,
-                         double _pixel_size, osg::Matrixd _intrinsic, osg::Matrixd _extrinsic , Equations _equations, bool _disableTexture = false);
+                         double _pixel_size, osg::Vec3d _eye, osg::Vec3d _target, osg::Vec3d _up , Equations _equations, bool _disableTexture = false);
 
     ~Simulation();
 

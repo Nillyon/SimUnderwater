@@ -87,13 +87,13 @@ void Simulation::operator ()(osg::RenderInfo &renderInfo, Equations _equations) 
         unsigned char *buffer_B = new unsigned char[width];
         unsigned char *buffer_A = new unsigned char[width];
 
-        double min_buffer_R;
-        double min_buffer_G;
-        double min_buffer_B;
+        float min_buffer_R;
+        float min_buffer_G;
+        float min_buffer_B;
 
-        double max_buffer_R;
-        double max_buffer_G;
-        double max_buffer_B;
+        float max_buffer_R;
+        float max_buffer_G;
+        float max_buffer_B;
 
         Matrix<double,Dynamic,Dynamic> directLightR = _equations.getDirectLightR();
         Matrix<double,Dynamic,Dynamic> directLightG = _equations.getDirectLightG();
@@ -176,7 +176,6 @@ void Simulation::operator ()(osg::RenderInfo &renderInfo, Equations _equations) 
         o_SRS.SetWellKnownGeogCS( "WGS84" );
         o_SRS.exportToWkt( &geo_reference );
 
-        geotiff_dataset->SetProjection(geo_reference);
 
         GDALClose(geotiff_dataset);
 
@@ -198,7 +197,7 @@ void Simulation::operator ()(osg::RenderInfo &renderInfo, Equations _equations) 
 
 }
 
-bool Simulation::simulate(osg::ref_ptr<osg::Node> _node, const std::string &_filename, double _refLatitude, double _refLongitude, double _pixel_size, osg::Matrixd _intrinsic, osg::Matrixd _extrinsic, Equations _equations , bool _disableTexture)
+bool Simulation::simulate(osg::ref_ptr<osg::Node> _node, const std::string &_filename, double _refLatitude, double _refLongitude, double _pixel_size, osg::Vec3d _eye, osg::Vec3d _target, osg::Vec3d _up, Equations _equations , bool _disableTexture)
 {
 
     BoxVisitor boxVisitor;
@@ -370,8 +369,10 @@ bool Simulation::simulate(osg::ref_ptr<osg::Node> _node, const std::string &_fil
     viewer.setCameraManipulator(new osgGA::TrackballManipulator());
     double cam_center_z= (x_max-x_min)/2 + (y_max-y_min)/2 ;
 
-    viewer.getCamera()->setViewMatrix(_extrinsic);
-    viewer.getCamera()->setProjectionMatrix(_intrinsic);
+//  viewer.getCamera()->setViewMatrix(_extrinsic);
+//  viewer.getCamera()->setProjectionMatrix(_intrinsic);
+    viewer.getCamera()->setProjectionMatrixAsOrtho2D(-width_meter/2,width_meter/2,-height_meter/2,height_meter/2);
+    viewer.getCameraManipulator()->setHomePosition(_eye, _target, _up);
 
     viewer.setSceneData( root.get() );
     viewer.realize();

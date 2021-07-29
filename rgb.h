@@ -21,7 +21,7 @@ public:
 
     bool status() const { return m_status; }
 
-    static bool process(osg::ref_ptr<osg::Node> _node, const std::string& _filename, double _refLatitude, double _refLongitude, double _pixel_size, osg::Matrixd _intrinsic, osg::Matrixd _extrinsic , bool _disableTexture = false);
+    static bool process(osg::ref_ptr<osg::Node> _node, const std::string& _filename, double _refLatitude, double _refLongitude, double _pixel_size, osg::Vec3d _eye, osg::Vec3d _target, osg::Vec3d _up, bool _disableTexture = false);
 
     ~RGB();
 
