@@ -78,9 +78,9 @@ void Equations::computeDirectLight(osg::ref_ptr<osg::Node> _node, const double _
             Elr=Lr*cos(m_Gamma(i,j))*exp(-cr*m_Rs(i,j))/(m_Rs(i,j)*m_Rs(i,j));
             Elg=Lg*cos(m_Gamma(i,j))*exp(-cg*m_Rs(i,j))/(m_Rs(i,j)*m_Rs(i,j));
             Elb=Lb*cos(m_Gamma(i,j))*exp(-cb*m_Rs(i,j))/(m_Rs(i,j)*m_Rs(i,j));
-            m_DirectLightR(i,j)=Elr*exp(-cr*m_Rc(i,j))*Mr/M_PI*pow(cos(m_Theta(i,j)),4)*Tl*pow((m_Rc(i,j)-focal),2)*M_PI/(4*fnumber*m_Rc(i,j)*m_Rc(i,j));
-            m_DirectLightG(i,j)=Elg*exp(-cg*m_Rc(i,j))*Mg/M_PI*pow(cos(m_Theta(i,j)),4)*Tl*pow((m_Rc(i,j)-focal),2)*M_PI/(4*fnumber*m_Rc(i,j)*m_Rc(i,j));
-            m_DirectLightB(i,j)=Elb*exp(-cb*m_Rc(i,j))*Mb/M_PI*pow(cos(m_Theta(i,j)),4)*Tl*pow((m_Rc(i,j)-focal),2)*M_PI/(4*fnumber*m_Rc(i,j)*m_Rc(i,j));
+            m_DirectLightR(i,j)=Elr*exp(-cr*m_Rc(i,j))*Mr/M_PI*pow(cos(m_Theta(i,j)),4)*Tl*pow((m_Rc(i,j)-focal*_pixel_size),2)*M_PI/(4*fnumber*m_Rc(i,j)*m_Rc(i,j));
+            m_DirectLightG(i,j)=Elg*exp(-cg*m_Rc(i,j))*Mg/M_PI*pow(cos(m_Theta(i,j)),4)*Tl*pow((m_Rc(i,j)-focal*_pixel_size),2)*M_PI/(4*fnumber*m_Rc(i,j)*m_Rc(i,j));
+            m_DirectLightB(i,j)=Elb*exp(-cb*m_Rc(i,j))*Mb/M_PI*pow(cos(m_Theta(i,j)),4)*Tl*pow((m_Rc(i,j)-focal*_pixel_size),2)*M_PI/(4*fnumber*m_Rc(i,j)*m_Rc(i,j));
         }
     }
 }
@@ -176,15 +176,17 @@ void Equations::computeCamera(osg::ref_ptr<osg::Node> _node, const double _pixel
             float val = data[(height - i - 1) * width + j];
             if (val == 1.0f) {
                 buffer[j] = no_data;
+		m_Rc(i,j)= 0;
                 m_Theta(i,j) = M_PI/2;
             }
             else{
                 buffer[j] = (1.0f - val) * delta + zmin;
-                m_Theta(i,j) = asin(sqrt(pow((j-u0)*_pixel_size , 2) + pow((i-v0)*_pixel_size, 2)) / buffer[j]);
-            }
-            m_Rc(i,j)=sqrt(pow((m_3DCoordinates(i,j).x()-_cameraModel.getTx()),2)+
+		m_Rc(i,j)=sqrt(pow((m_3DCoordinates(i,j).x()-_cameraModel.getTx()),2)+
                            pow((m_3DCoordinates(i,j).y()-_cameraModel.getTy()),2)+
                            pow((m_3DCoordinates(i,j).z()-_cameraModel.getTz()),2));
+                m_Theta(i,j) = asin(sqrt(pow((j-u0)*_pixel_size , 2) + pow((i-v0)*_pixel_size, 2)) / m_Rc(i,j));
+            }
+            
         }
     }
 
@@ -508,10 +510,18 @@ void Equations::computeNormals(osg::ref_ptr<osg::Node> _node, const double _pixe
             double v3 = z3-z1;
 
             // Cross product
-
-            m_Normals(i,j).x()=u2*v3-u3*v2;
-            m_Normals(i,j).y()=u3*v1-u1*v3;
-            m_Normals(i,j).z()=u1*v2-u2*v1;
+		
+	    // The normal needs to be in the right direction so we have to think about two cases
+	    if((i==height-1 && j!=width-1) || (j=width-1 && i!=height-1){
+		m_Normals(i,j).x()=v2*u3-v3*u2;
+                m_Normals(i,j).y()=v3*u1-v1*u3;
+                m_Normals(i,j).z()=v1*u2-v2*u1;
+	    }
+	    else{
+                m_Normals(i,j).x()=u2*v3-u3*v2;
+            	m_Normals(i,j).y()=u3*v1-u1*v3;
+            	m_Normals(i,j).z()=u1*v2-u2*v1;
+	    }
         }
     }
 }
